@@ -1,0 +1,68 @@
+From 219d24274ffb3bdd7387252559a32e49470fbb3c Mon Sep 17 00:00:00 2001
+From: Simon Gurney <simongurney@outlook.com>
+Date: Tue, 6 Aug 2019 08:55:49 +0100
+Subject: [PATCH] Added support for /32 and /128 prefixes
+
+---
+ .gitignore            |  2 ++
+ netbox/ipam/models.py | 18 ++++++------------
+ netbox/ipam/views.py  |  2 +-
+ 3 files changed, 9 insertions(+), 13 deletions(-)
+
+diff --git a/netbox/ipam/models.py b/netbox/ipam/models.py
+index 373128a8f..58077594a 100644
+--- a/netbox/ipam/models.py
++++ b/netbox/ipam/models.py
+@@ -346,16 +346,6 @@ def clean(self):
+ 
+         if self.prefix:
+ 
+-            # Disallow host masks
+-            if self.prefix.version == 4 and self.prefix.prefixlen == 32:
+-                raise ValidationError({
+-                    'prefix': "Cannot create host addresses (/32) as prefixes. Create an IPv4 address instead."
+-                })
+-            elif self.prefix.version == 6 and self.prefix.prefixlen == 128:
+-                raise ValidationError({
+-                    'prefix': "Cannot create host addresses (/128) as prefixes. Create an IPv6 address instead."
+-                })
+-
+             # Enforce unique IP space (if applicable)
+             if (self.vrf is None and settings.ENFORCE_GLOBAL_UNIQUE) or (self.vrf and self.vrf.enforce_unique):
+                 duplicate_prefixes = self.get_duplicates()
+@@ -423,6 +413,10 @@ def get_child_ips(self):
+         Return all IPAddresses within this Prefix and VRF. If this Prefix is a container in the global table, return
+         child IPAddresses belonging to any VRF.
+         """
++        if self.prefix.prefixlen == 32:
++            return IPAddress.objects.filter(vrf=self.vrf, address__net_host=str(self.prefix.cidr))
++        if self.prefix.prefixlen == 128:
++            return IPAddress.objects.filter(vrf=self.vrf, address__net_host=str(self.prefix.cidr))
+         if self.vrf is None and self.status == PREFIX_STATUS_CONTAINER:
+             return IPAddress.objects.filter(address__net_host_contained=str(self.prefix))
+         else:
+@@ -452,9 +446,9 @@ def get_available_ips(self):
+ 
+         # All IP addresses within a point-to-point prefix (IPv4 /31 or IPv6 /127) are considered usable
+         if (
+-            self.family == 4 and self.prefix.prefixlen == 31  # RFC 3021
++            self.family == 4 and self.prefix.prefixlen >= 31  # RFC 3021
+         ) or (
+-            self.family == 6 and self.prefix.prefixlen == 127  # RFC 6164
++            self.family == 6 and self.prefix.prefixlen >= 127  # RFC 6164
+         ):
+             return available_ips
+ 
+diff --git a/netbox/ipam/views.py b/netbox/ipam/views.py
+index d80646bb0..2eae12563 100644
+--- a/netbox/ipam/views.py
++++ b/netbox/ipam/views.py
+@@ -649,7 +649,7 @@ def get(self, request, pk):
+ 
+         # Parent prefixes table
+         parent_prefixes = Prefix.objects.filter(
+-            vrf=ipaddress.vrf, prefix__net_contains=str(ipaddress.address.ip)
++            vrf=ipaddress.vrf, prefix__net_contains_or_equals=str(ipaddress.address.ip)
+         ).select_related(
+             'site', 'role'
+         )
