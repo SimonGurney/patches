@@ -1,7 +1,7 @@
 From 219d24274ffb3bdd7387252559a32e49470fbb3c Mon Sep 17 00:00:00 2001
 From: Simon Gurney <simongurney@outlook.com>
 Date: Tue, 6 Aug 2019 08:55:49 +0100
-Subject: [PATCH] Added support for /32 and /128 prefixes
+Subject: [PATCH 1/2] Added support for /32 and /128 prefixes
 
 ---
  .gitignore            |  2 ++
@@ -66,3 +66,27 @@ index d80646bb0..2eae12563 100644
          ).select_related(
              'site', 'role'
          )
+
+From 0781dc4435e84a103178e1a10ee5fadef4fc9572 Mon Sep 17 00:00:00 2001
+From: SimonGurney <simongurney@outlook.com>
+Date: Thu, 8 Aug 2019 23:47:22 +0100
+Subject: [PATCH 2/2] Update models.py
+
+Adjusted so an aggregate completely filled by a child prefix will get util from the child > child prefixes.  A full scope child prefix is essential to find free space in the aggregate via the API
+---
+ netbox/ipam/models.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/netbox/ipam/models.py b/netbox/ipam/models.py
+index 58077594a..79100e5cd 100644
+--- a/netbox/ipam/models.py
++++ b/netbox/ipam/models.py
+@@ -216,7 +216,7 @@ def get_utilization(self):
+         """
+         Determine the prefix utilization of the aggregate and return it as a percentage.
+         """
+-        queryset = Prefix.objects.filter(prefix__net_contained_or_equal=str(self.prefix))
++        queryset = Prefix.objects.filter(prefix__net_contained=str(self.prefix))
+         child_prefixes = netaddr.IPSet([p.prefix for p in queryset])
+         return int(float(child_prefixes.size) / self.prefix.size * 100)
+ 
