@@ -90,3 +90,25 @@ index 58077594a..79100e5cd 100644
          child_prefixes = netaddr.IPSet([p.prefix for p in queryset])
          return int(float(child_prefixes.size) / self.prefix.size * 100)
  
+From 35c373aff1c64b0d9ce5a2bddc1b2f943925b1b0 Mon Sep 17 00:00:00 2001
+From: SimonGurney <simongurney@outlook.com>
+Date: Wed, 4 Sep 2019 09:56:16 +0100
+Subject: [PATCH 3/3] Modified the prefix contained filter to include /32 and
+ /128 prefixes
+
+---
+ netbox/ipam/filters.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/netbox/ipam/filters.py b/netbox/ipam/filters.py
+index 49c547d2d..c2bf4f089 100644
+--- a/netbox/ipam/filters.py
++++ b/netbox/ipam/filters.py
+@@ -237,7 +237,7 @@ def search_contains(self, queryset, name, value):
+                 return queryset.filter(prefix__net_contains_or_equals=str(netaddr.IPNetwork(value).cidr))
+             # Searching by IP address
+             else:
+-                return queryset.filter(prefix__net_contains=str(netaddr.IPAddress(value)))
++                return queryset.filter(prefix__net_contains_or_equals=str(netaddr.IPAddress(value)))
+         except (AddrFormatError, ValueError):
+             return queryset.none()
