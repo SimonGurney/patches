@@ -112,3 +112,4 @@ index 49c547d2d..c2bf4f089 100644
 +                return queryset.filter(prefix__net_contains_or_equals=str(netaddr.IPAddress(value)))
          except (AddrFormatError, ValueError):
              return queryset.none()
+ 
